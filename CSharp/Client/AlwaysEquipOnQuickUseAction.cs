@@ -26,133 +26,148 @@ namespace AlwaysEquipOnQuickUseAction {
       PutToEquippedItem,
       UseTreatment,
     }
+
+    QuickUseAction GetQuickUseAction(object self, LuaCsHook.ParameterTable args) {
+      Item item = (Item)(args["item"]);
+      bool allowEquip = (bool)(args["allowEquip"]);
+      bool allowInventorySwap = (bool)(args["allowInventorySwap"]);
+      bool allowApplyTreatment = (bool)(args["allowApplyTreatment"]);
+
+      CharacterInventory selfInventory = (CharacterInventory)self;
+      Character character = (Character)(typeof(Character).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+
+      if (allowApplyTreatment && CharacterHealth.OpenHealthWindow != null && 
+          //if the item can be equipped in the health interface slot, don't use it as a treatment but try to equip it
+          !item.AllowedSlots.Contains(InvSlotType.HealthInterface))
+      {
+          return QuickUseAction.UseTreatment;
+      }
+      
+      if (item.ParentInventory != selfInventory)
+      {
+          if (Screen.Selected == GameMain.GameScreen)
+          {
+              if (item.NonInteractable || item.NonPlayerTeamInteractable)
+              {
+                  return QuickUseAction.None;
+              }
+          }
+          if (item.ParentInventory == null || item.ParentInventory.Locked)
+          {
+              return QuickUseAction.None;
+          }
+          //in another inventory -> attempt to place in the character's inventory
+          else if (allowInventorySwap)
+          {
+              if (item.Container == null || character.Inventory.FindIndex(item.Container) == -1) // Not a subinventory in the character's inventory
+              {
+                  if (character.HeldItems.Any(i => i.OwnInventory != null && i.OwnInventory.CanBePut(item)))
+                  {
+                      return QuickUseAction.PutToEquippedItem;
+                  }
+                  else
+                  {
+                      return item.ParentInventory is CharacterInventory ? QuickUseAction.TakeFromCharacter : QuickUseAction.TakeFromContainer;
+                  }
+              }
+              else
+              {
+                  var selectedContainer = character.SelectedItem?.GetComponent<ItemContainer>();
+                  if (selectedContainer != null &&
+                      selectedContainer.Inventory != null &&
+                      !selectedContainer.Inventory.Locked)
+                  {
+                      // Move the item from the subinventory to the selected container
+                      return QuickUseAction.PutToContainer;
+                  }
+                  else if (character.Inventory.AccessibleWhenAlive || character.Inventory.AccessibleByOwner)
+                  {
+                      // Take from the subinventory and place it in the character's main inventory if no target container is selected
+                      return QuickUseAction.TakeFromContainer;
+                  }
+              }
+          }
+      }
+      else
+      {
+          var selectedContainer = character.SelectedItem?.GetComponent<ItemContainer>();
+
+          if (selectedContainer != null && 
+              selectedContainer.Inventory != null && 
+              !selectedContainer.Inventory.Locked && 
+              allowInventorySwap)
+          {
+              //player has selected the inventory of another item -> attempt to move the item there
+              return QuickUseAction.PutToContainer;
+          }
+          else if (character.SelectedCharacter?.Inventory != null && 
+              !character.SelectedCharacter.Inventory.Locked && 
+              allowInventorySwap)
+          {
+              //player has selected the inventory of another character -> attempt to move the item there
+              return QuickUseAction.PutToCharacter;
+          }
+          else if (character.SelectedBy?.Inventory != null && 
+              Character.Controlled == character.SelectedBy &&
+              !character.SelectedBy.Inventory.Locked &&
+              (character.SelectedBy.Inventory.AccessibleWhenAlive || character.SelectedBy.Inventory.AccessibleByOwner) &&
+              allowInventorySwap)
+          {
+              return QuickUseAction.TakeFromCharacter;
+          }
+          else if (character.HeldItems.Any(i => 
+              i.OwnInventory != null &&
+              (i.OwnInventory.CanBePut(item) || ((i.OwnInventory.Capacity == 1 || i.OwnInventory.Container.HasSubContainers) && i.OwnInventory.AllowSwappingContainedItems && i.OwnInventory.Container.CanBeContained(item)))))
+          {
+              if (allowEquip && !character.HasEquippedItem(item) &&
+                  (item.HasTag("weapon") ||
+                   item.GetComponent<MeleeWeapon>() != null ||
+                   item.GetComponent<RangedWeapon>() != null)) {
+                return QuickUseAction.Equip;
+              }
+              return QuickUseAction.PutToEquippedItem;
+          }
+          else if (allowEquip) //doubleclicked and no other inventory is selected
+          {
+              //not equipped -> attempt to equip
+              if (!character.HasEquippedItem(item) || item.GetComponents<Pickable>().Count() > 1)
+              {
+                  return QuickUseAction.Equip;
+              }
+              //equipped -> attempt to unequip
+              else if (item.AllowedSlots.Contains(InvSlotType.Any))
+              {
+                  return QuickUseAction.Unequip;
+              }
+              else
+              {
+                  return QuickUseAction.Drop;
+              }
+          }
+      }
+
+      return QuickUseAction.None;
+    }
+
     public void InitClient() {
-      GameMain.LuaCs.Hook.HookMethod("AlwaysEquipOnQuickUseAction_GetQuickUseAction",
-          typeof(CharacterInventory).GetMethod("GetQuickUseAction", BindingFlags.Instance | BindingFlags.NonPublic), 
-          (object self, Dictionary<string, object> args) => {
-            Item item = (Item)(args["item"]);
-            bool allowEquip = (bool)(args["allowEquip"]);
-            bool allowInventorySwap = (bool)(args["allowInventorySwap"]);
-            bool allowApplyTreatment = (bool)(args["allowApplyTreatment"]);
+      GameMain.LuaCs.Hook.Patch("AlwaysEquipOnQuickUseAction_GetQuickUseAction",
+          "Barotrauma.CharacterInventory",
+          "GetQuickUseAction",
+          // new String[] {"item", "allowEquip", "allowInventorySwap", "allowApplyTreatment"},
+          (object self, LuaCsHook.ParameterTable args) => {
+            args.PreventExecution = true;
 
-            CharacterInventory selfInventory = (CharacterInventory)self;
-            Character character = (Character)(typeof(Character).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+            args.ReturnValue = GetQuickUseAction(self, args);
+            return null;
+          });
 
-            if (allowApplyTreatment && CharacterHealth.OpenHealthWindow != null && 
-                //if the item can be equipped in the health interface slot, don't use it as a treatment but try to equip it
-                !item.AllowedSlots.Contains(InvSlotType.HealthInterface))
-            {
-                return QuickUseAction.UseTreatment;
-            }
-            
-            if (item.ParentInventory != selfInventory)
-            {
-                if (Screen.Selected == GameMain.GameScreen)
-                {
-                    if (item.NonInteractable || item.NonPlayerTeamInteractable)
-                    {
-                        return QuickUseAction.None;
-                    }
-                }
-                if (item.ParentInventory == null || item.ParentInventory.Locked)
-                {
-                    return QuickUseAction.None;
-                }
-                //in another inventory -> attempt to place in the character's inventory
-                else if (allowInventorySwap)
-                {
-                    if (item.Container == null || character.Inventory.FindIndex(item.Container) == -1) // Not a subinventory in the character's inventory
-                    {
-                        if (character.HeldItems.Any(i => i.OwnInventory != null && i.OwnInventory.CanBePut(item)))
-                        {
-                            return QuickUseAction.PutToEquippedItem;
-                        }
-                        else
-                        {
-                            return item.ParentInventory is CharacterInventory ? QuickUseAction.TakeFromCharacter : QuickUseAction.TakeFromContainer;
-                        }
-                    }
-                    else
-                    {
-                        var selectedContainer = character.SelectedItem?.GetComponent<ItemContainer>();
-                        if (selectedContainer != null &&
-                            selectedContainer.Inventory != null &&
-                            !selectedContainer.Inventory.Locked)
-                        {
-                            // Move the item from the subinventory to the selected container
-                            return QuickUseAction.PutToContainer;
-                        }
-                        else if (character.Inventory.AccessibleWhenAlive || character.Inventory.AccessibleByOwner)
-                        {
-                            // Take from the subinventory and place it in the character's main inventory if no target container is selected
-                            return QuickUseAction.TakeFromContainer;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                var selectedContainer = character.SelectedItem?.GetComponent<ItemContainer>();
+      GameMain.LuaCs.Hook.Patch("AlwaysEquipOnQuickUseAction_QuickUseItem",
+          "Barotrauma.CharacterInventory",
+          "QuickUseItem",
+          // new String[] {"item", "allowEquip", "allowInventorySwap", "allowApplyTreatment", "action", "playSound"},
+          (object self, LuaCsHook.ParameterTable args) => {
+            args.PreventExecution = true;
 
-                if (selectedContainer != null && 
-                    selectedContainer.Inventory != null && 
-                    !selectedContainer.Inventory.Locked && 
-                    allowInventorySwap)
-                {
-                    //player has selected the inventory of another item -> attempt to move the item there
-                    return QuickUseAction.PutToContainer;
-                }
-                else if (character.SelectedCharacter?.Inventory != null && 
-                    !character.SelectedCharacter.Inventory.Locked && 
-                    allowInventorySwap)
-                {
-                    //player has selected the inventory of another character -> attempt to move the item there
-                    return QuickUseAction.PutToCharacter;
-                }
-                else if (character.SelectedBy?.Inventory != null && 
-                    Character.Controlled == character.SelectedBy &&
-                    !character.SelectedBy.Inventory.Locked &&
-                    (character.SelectedBy.Inventory.AccessibleWhenAlive || character.SelectedBy.Inventory.AccessibleByOwner) &&
-                    allowInventorySwap)
-                {
-                    return QuickUseAction.TakeFromCharacter;
-                }
-                else if (character.HeldItems.Any(i => 
-                    i.OwnInventory != null &&
-                    (i.OwnInventory.CanBePut(item) || ((i.OwnInventory.Capacity == 1 || i.OwnInventory.Container.HasSubContainers) && i.OwnInventory.AllowSwappingContainedItems && i.OwnInventory.Container.CanBeContained(item)))))
-                {
-                    if (allowEquip && !character.HasEquippedItem(item) &&
-                        (item.HasTag("weapon") ||
-                         item.GetComponent<MeleeWeapon>() != null ||
-                         item.GetComponent<RangedWeapon>() != null)) {
-                      return QuickUseAction.Equip;
-                    }
-                    return QuickUseAction.PutToEquippedItem;
-                }
-                else if (allowEquip) //doubleclicked and no other inventory is selected
-                {
-                    //not equipped -> attempt to equip
-                    if (!character.HasEquippedItem(item) || item.GetComponents<Pickable>().Count() > 1)
-                    {
-                        return QuickUseAction.Equip;
-                    }
-                    //equipped -> attempt to unequip
-                    else if (item.AllowedSlots.Contains(InvSlotType.Any))
-                    {
-                        return QuickUseAction.Unequip;
-                    }
-                    else
-                    {
-                        return QuickUseAction.Drop;
-                    }
-                }
-            }
-
-            return QuickUseAction.None;
-          }, LuaCsHook.HookMethodType.Before, this);
-      GameMain.LuaCs.Hook.HookMethod("AlwaysEquipOnQuickUseAction_QuickUseItem",
-          typeof(CharacterInventory).GetMethod("QuickUseItem", BindingFlags.Instance | BindingFlags.NonPublic),
-          (object self, Dictionary<string, object> args) => {
             Item item = (Item)(args["item"]);
             bool allowEquip = (bool)(args["allowEquip"]);
             bool allowInventorySwap = (bool)(args["allowInventorySwap"]);
@@ -190,7 +205,7 @@ namespace AlwaysEquipOnQuickUseAction {
                 SubEditorScreen.StoreCommand(new AddOrDeleteCommand(new List<MapEntity> { item }, true));
 
                 item.Remove();
-                return false;
+                return null;
             }
 
             QuickUseAction quickUseAction = action ?? ((QuickUseAction)selfInventory.GetQuickUseAction(item, allowEquip, allowInventorySwap, allowApplyTreatment));
@@ -204,7 +219,7 @@ namespace AlwaysEquipOnQuickUseAction {
                     }
                     else
                     {
-                        if (GUIMessageBox.MessageBoxes.Any(mb => mb.UserData as string == "equipconfirmation")) { return false; }
+                        if (GUIMessageBox.MessageBoxes.Any(mb => mb.UserData as string == "equipconfirmation")) { return null; }
                         var equipConfirmation = new GUIMessageBox(string.Empty, TextManager.Get(item.Prefab.EquipConfirmationText),
                             new LocalizedString[] { TextManager.Get("yes"), TextManager.Get("no") })
                         {
@@ -270,10 +285,10 @@ namespace AlwaysEquipOnQuickUseAction {
                     break;
                 case QuickUseAction.UseTreatment:
                     CharacterHealth.OpenHealthWindow?.OnItemDropped(item, ignoreMousePos: true);
-                    return false;
+                    return null;
                 case QuickUseAction.Drop:
                     //do nothing, the item is dropped after a delay
-                    return false;
+                    return null;
                 case QuickUseAction.PutToCharacter:
                     if (character.SelectedCharacter != null && character.SelectedCharacter.Inventory != null)
                     {
@@ -370,8 +385,8 @@ namespace AlwaysEquipOnQuickUseAction {
             {
                 SoundPlayer.PlayUISound(success ? GUISoundType.PickItem : GUISoundType.PickItemFail);
             }
-            return false;
-          }, LuaCsHook.HookMethodType.Before, this);
+            return null;
+          });
     }
   }
 }
