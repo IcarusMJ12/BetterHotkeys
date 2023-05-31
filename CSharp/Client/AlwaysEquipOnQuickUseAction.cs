@@ -14,7 +14,7 @@ using Barotrauma.Items.Components;
 
 namespace AlwaysEquipOnQuickUseAction {
   partial class AlwaysEquipOnQuickUseAction {
-    private enum QuickUseAction {
+    enum QuickUseAction {
       None,
       Equip,
       Unequip,
@@ -34,7 +34,7 @@ namespace AlwaysEquipOnQuickUseAction {
       bool allowApplyTreatment = (bool)(args["allowApplyTreatment"]);
 
       CharacterInventory selfInventory = (CharacterInventory)self;
-      Character character = (Character)(typeof(Character).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+      Character character = (Character)(typeof(CharacterInventory).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
 
       if (allowApplyTreatment && CharacterHealth.OpenHealthWindow != null && 
           //if the item can be equipped in the health interface slot, don't use it as a treatment but try to equip it
@@ -172,15 +172,15 @@ namespace AlwaysEquipOnQuickUseAction {
             bool allowEquip = (bool)(args["allowEquip"]);
             bool allowInventorySwap = (bool)(args["allowInventorySwap"]);
             bool allowApplyTreatment = (bool)(args["allowApplyTreatment"]);
-            QuickUseAction? action = (QuickUseAction?)(args["action"]);
+            QuickUseAction action = (QuickUseAction)(args["action"]);
             bool playSound = (bool)(args["playSound"]);
 
             CharacterInventory selfInventory = (CharacterInventory)self;
-            Character character = (Character)(typeof(Character).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
-            int capacity = (int)(typeof(int).GetField("capacity", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
-            VisualSlot[] visualSlots = (VisualSlot[])(typeof(VisualSlot[]).GetField("visualSlots", BindingFlags.Instance).GetValue(self));
-            InvSlotType[] SlotTypes = (InvSlotType[])(typeof(InvSlotType[]).GetField("slotTypes", BindingFlags.Instance).GetValue(self));
-            List<Item> DraggingItems = (List<Item>)(typeof(List<Item>).GetField("DraggingItems", BindingFlags.Static).GetValue(self));
+            Character character = (Character)(typeof(CharacterInventory).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+            int capacity = (int)(typeof(CharacterInventory).GetField("capacity", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+            InvSlotType[] SlotTypes = selfInventory.SlotTypes;
+            List<Item> DraggingItems = CharacterInventory.DraggingItems;
+            Inventory.ItemSlot[] slots = (Inventory.ItemSlot[])(typeof(CharacterInventory).GetField("slots", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
 
             if (Screen.Selected is SubEditorScreen editor && !editor.WiringMode && !Submarine.Unloading)
             {
@@ -208,7 +208,7 @@ namespace AlwaysEquipOnQuickUseAction {
                 return null;
             }
 
-            QuickUseAction quickUseAction = action ?? ((QuickUseAction)selfInventory.GetQuickUseAction(item, allowEquip, allowInventorySwap, allowApplyTreatment));
+            QuickUseAction quickUseAction = action == null ? ((QuickUseAction)selfInventory.GetQuickUseAction(item, allowEquip, allowInventorySwap, allowApplyTreatment)) : action;
             bool success = false;
             switch (quickUseAction)
             {
@@ -239,7 +239,7 @@ namespace AlwaysEquipOnQuickUseAction {
                         //attempt to put in a free slot first
                         for (int i = capacity - 1; i >= 0; i--)
                         {
-                            if (!selfInventory.slots[i].Empty()) { continue; }
+                            if (!slots[i].Empty()) { continue; }
                             if (SlotTypes[i] == InvSlotType.Any || !item.AllowedSlots.Any(a => a.HasFlag(SlotTypes[i]))) { continue; }
                             success = selfInventory.TryPutItem(item, i, true, false, Character.Controlled, true);
                             if (success) { return; }
@@ -249,10 +249,10 @@ namespace AlwaysEquipOnQuickUseAction {
                         {
                             if (SlotTypes[i] == InvSlotType.Any || !item.AllowedSlots.Any(a => a.HasFlag(SlotTypes[i]))) { continue; }
                             // something else already equipped in a hand slot, attempt to unequip it so items aren't unnecessarily swapped to it
-                            if (!selfInventory.slots[i].Empty() && selfInventory.slots[i].First().AllowedSlots.Contains(InvSlotType.Any) && 
+                            if (!slots[i].Empty() && slots[i].First().AllowedSlots.Contains(InvSlotType.Any) && 
                                 (SlotTypes[i] == InvSlotType.LeftHand || SlotTypes[i] == InvSlotType.RightHand))
                             {
-                                selfInventory.TryPutItem(selfInventory.slots[i].First(), Character.Controlled, new List<InvSlotType>() { InvSlotType.Any }, true);
+                                selfInventory.TryPutItem(slots[i].First(), Character.Controlled, new List<InvSlotType>() { InvSlotType.Any }, true);
                             }
                             success = selfInventory.TryPutItem(item, i, true, false, Character.Controlled, true);
                             if (success) { return; }
@@ -266,10 +266,10 @@ namespace AlwaysEquipOnQuickUseAction {
                             for (int i = capacity - 1; i >= 0; i--)
                             {
                                 if (SlotTypes[i] == InvSlotType.Any || !item.AllowedSlots.Any(a => a.HasFlag(SlotTypes[i]))) { continue; }
-                                if (!selfInventory.slots[i].Empty() &&
+                                if (!slots[i].Empty() &&
                                     (SlotTypes[i] == InvSlotType.LeftHand || SlotTypes[i] == InvSlotType.RightHand))
                                 {
-                                    selfInventory.slots[i].First().Drop(Character.Controlled);
+                                    slots[i].First().Drop(Character.Controlled);
                                 }
                                 success = selfInventory.TryPutItem(item, i, true, false, Character.Controlled, true);
                                 if (success) { return; }
@@ -348,7 +348,7 @@ namespace AlwaysEquipOnQuickUseAction {
                             success = true;
                             for (int j = 0; j < capacity; j++)
                             {
-                                if (selfInventory.slots[j].Contains(heldItem)) { visualSlots[j].ShowBorderHighlight(GUIStyle.Green, 0.1f, 0.4f); }
+                                if (slots[j].Contains(heldItem)) { selfInventory.visualSlots[j].ShowBorderHighlight(GUIStyle.Green, 0.1f, 0.4f); }
                             }
                             break;
                         }
@@ -376,7 +376,7 @@ namespace AlwaysEquipOnQuickUseAction {
             {
                 for (int i = 0; i < capacity; i++)
                 {
-                    if (selfInventory.slots[i].Contains(item)) { visualSlots[i].ShowBorderHighlight(GUIStyle.Green, 0.1f, 0.4f); }
+                    if (slots[i].Contains(item)) { selfInventory.visualSlots[i].ShowBorderHighlight(GUIStyle.Green, 0.1f, 0.4f); }
                 }
             }
 
