@@ -121,6 +121,7 @@ namespace AlwaysEquipOnQuickUseAction {
           {
               if (allowEquip && !character.HasEquippedItem(item) &&
                   (item.HasTag("weapon") ||
+                   item.HasTag("mountableweapon") || // anything that can be put in a weapon holder, includes welders/cutters
                    item.GetComponent<MeleeWeapon>() != null ||
                    item.GetComponent<RangedWeapon>() != null)) {
                 return QuickUseAction.Equip;
@@ -181,6 +182,8 @@ namespace AlwaysEquipOnQuickUseAction {
             InvSlotType[] SlotTypes = selfInventory.SlotTypes;
             List<Item> DraggingItems = CharacterInventory.DraggingItems;
             Inventory.ItemSlot[] slots = (Inventory.ItemSlot[])(typeof(CharacterInventory).GetField("slots", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(self));
+
+            MethodInfo GetActiveEquippedSubInventory = typeof(CharacterInventory).GetMethod("GetActiveEquippedSubInventory", BindingFlags.NonPublic | BindingFlags.Instance);
 
             if (Screen.Selected is SubEditorScreen editor && !editor.WiringMode && !Submarine.Unloading)
             {
@@ -259,6 +262,7 @@ namespace AlwaysEquipOnQuickUseAction {
                         }
 
                         if (item.HasTag("weapon") || 
+                            item.HasTag("mountableweapon") || // anything that can be put in a weapon holder, includes welders/cutters
                             item.GetComponent<MeleeWeapon>() != null ||
                             item.GetComponent<RangedWeapon>() != null) {
                         
@@ -317,7 +321,7 @@ namespace AlwaysEquipOnQuickUseAction {
                     ItemInventory activeSubInventory = null;
                     for (int i = 0; i < capacity; i++)
                     {
-                        activeSubInventory = selfInventory.GetActiveEquippedSubInventory(i);
+                        activeSubInventory = (ItemInventory)GetActiveEquippedSubInventory.Invoke(selfInventory, new object[] { i });
                         if (activeSubInventory != null)
                         {
                             success = activeSubInventory.TryPutItem(item, Character.Controlled, item.AllowedSlots, true);
