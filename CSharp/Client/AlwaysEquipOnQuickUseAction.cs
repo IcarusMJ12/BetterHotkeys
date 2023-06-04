@@ -205,9 +205,13 @@ namespace AlwaysEquipOnQuickUseAction {
                 for (int i = capacity - 1; i >= 0; i--) {
                   if (SlotTypes[i] == InvSlotType.Any || !item.AllowedSlots.Any(a => a.HasFlag(SlotTypes[i]))) { continue; }
                   // something else already equipped in a hand slot, attempt to unequip it so items aren't unnecessarily swapped to it
-                  if (!slots[i].Empty() && slots[i].First().AllowedSlots.Contains(InvSlotType.Any) &&
+                  if (!slots[i].Empty() &&
                       (SlotTypes[i] == InvSlotType.LeftHand || SlotTypes[i] == InvSlotType.RightHand)) {
-                    selfInventory.TryPutItem(slots[i].First(), Character.Controlled, new List<InvSlotType>() { InvSlotType.Any }, true);
+                    if (slots[i].First().AllowedSlots.Contains(InvSlotType.Any)) {
+                      selfInventory.TryPutItem(slots[i].First(), Character.Controlled, new List<InvSlotType>() { InvSlotType.Any }, true);
+                    } else if (slots[i].First().AllowedSlots.Contains(InvSlotType.Bag)) {
+                      selfInventory.TryPutItem(slots[i].First(), Character.Controlled, new List<InvSlotType>() { InvSlotType.Bag }, true);
+                    }
                   }
                   success = selfInventory.TryPutItem(item, i, true, false, Character.Controlled, true);
                   if (success) { return; }
