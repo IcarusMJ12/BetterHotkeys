@@ -12,8 +12,8 @@ using Barotrauma.Extensions;
 using Barotrauma.Items;
 using Barotrauma.Items.Components;
 
-namespace AlwaysEquipOnQuickUseAction {
-  partial class AlwaysEquipOnQuickUseAction {
+namespace BetterHotkeys {
+  partial class BetterHotkeys {
     enum QuickUseAction {
       None,
       Equip,
@@ -121,7 +121,7 @@ namespace AlwaysEquipOnQuickUseAction {
     }
 
     public void InitClient() {
-      GameMain.LuaCs.Hook.Patch("AlwaysEquipOnQuickUseAction_GetQuickUseAction",
+      GameMain.LuaCs.Hook.Patch("BetterHotkeys_GetQuickUseAction",
           "Barotrauma.CharacterInventory",
           "GetQuickUseAction",
           (object self, LuaCsHook.ParameterTable args) => {
@@ -131,7 +131,7 @@ namespace AlwaysEquipOnQuickUseAction {
           return null;
           });
 
-      GameMain.LuaCs.Hook.Patch("AlwaysEquipOnQuickUseAction_QuickUseItem",
+      GameMain.LuaCs.Hook.Patch("BetterHotkeys_QuickUseItem",
           "Barotrauma.CharacterInventory",
           "QuickUseItem",
           (object self, LuaCsHook.ParameterTable args) => {

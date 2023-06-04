@@ -18,7 +18,7 @@ multiplayer environment.
 
 ### Usage
 
-Clone this repository or unpack a snapshot in your `Local Mods` directory.
+Clone this repository or unpack a snapshot in your `LocalMods` directory.
 
 
 ### Disclaimer
