@@ -97,9 +97,7 @@ namespace BetterHotkeys {
               (i.OwnInventory.CanBePut(item) || ((i.OwnInventory.Capacity == 1 || i.OwnInventory.Container.HasSubContainers) && i.OwnInventory.AllowSwappingContainedItems && i.OwnInventory.Container.CanBeContained(item))))) {
           if (allowEquip && !character.HasEquippedItem(item, InvSlotType.RightHand | InvSlotType.LeftHand) &&
               (item.HasTag("weapon") ||
-               item.HasTag("mountableweapon") || // anything that can be put in a weapon holder, includes welders/cutters
-               item.GetComponent<MeleeWeapon>() != null ||
-               item.GetComponent<RangedWeapon>() != null)) {
+               item.HasTag("mountableweapon"))) { // anything that can be put in a weapon holder, includes welders/cutters
             return QuickUseAction.Equip;
           }
           return QuickUseAction.PutToEquippedItem;
@@ -218,10 +216,7 @@ namespace BetterHotkeys {
                 }
 
                 if (item.HasTag("weapon") ||
-                    item.HasTag("mountableweapon") || // anything that can be put in a weapon holder, includes welders/cutters
-                    item.GetComponent<MeleeWeapon>() != null ||
-                    item.GetComponent<RangedWeapon>() != null) {
-
+                    item.HasTag("mountableweapon")) {  // anything that can be put in a weapon holder, includes welders/cutters
                   // swapping didn't work, attempt to drop held item and wield if weapon
                   for (int i = capacity - 1; i >= 0; i--) {
                     if (SlotTypes[i] == InvSlotType.Any || !item.AllowedSlots.Any(a => a.HasFlag(SlotTypes[i]))) { continue; }
