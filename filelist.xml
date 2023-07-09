@@ -1,5 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <contentpackage name="BetterHotkeys" modversion="0.3.1" corepackage="False" steamworkshopid="2984665813" gameversion="1.0.20.1">
-  <Other file="%ModDir%/CSharp/Shared/BetterHotkeys.cs" />
   <Other file="%ModDir%/CSharp/Client/BetterHotkeys.cs" />
 </contentpackage>
