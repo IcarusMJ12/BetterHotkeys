@@ -20,21 +20,6 @@ namespace BetterHotkeys {
     const string PatchCategory = "aquinas.icarus.BetterHotkeys";
     private Harmony harmony;
 
-    /*
-    enum QuickUseAction {
-      None,
-      Equip,
-      Unequip,
-      Drop,
-      TakeFromContainer,
-      TakeFromCharacter,
-      PutToContainer,
-      PutToCharacter,
-      PutToEquippedItem,
-      UseTreatment,
-    }
-    */
-
     [HarmonyPatch(typeof(Barotrauma.CharacterInventory))]
     [HarmonyPatch(nameof(Barotrauma.CharacterInventory.GetQuickUseAction))]
     public static class BetterHotkeys_GetQuickUseAction {
@@ -125,7 +110,6 @@ namespace BetterHotkeys {
 
       static bool Prefix(ref QuickUseAction __result, CharacterInventory __instance, Item item, bool allowEquip, bool allowInventorySwap, bool allowApplyTreatment) {
         __result = (QuickUseAction)GetQuickUseAction_(__instance, item, allowEquip, allowInventorySwap, allowApplyTreatment);
-        LuaCsLogger.Log("wat");
         return false;
       }
     }
@@ -134,7 +118,6 @@ namespace BetterHotkeys {
     [HarmonyPatch(nameof(Barotrauma.CharacterInventory.QuickUseItem))]
     public static class BetterHotkeys_QuickUseItem {
       static bool Prefix(CharacterInventory __instance, Item item, bool allowEquip, bool allowInventorySwap, bool allowApplyTreatment, QuickUseAction? action = null, bool playSound = true) {
-        LuaCsLogger.Log("ermelon");
         Character character = (Character)(typeof(CharacterInventory).GetField("character", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(__instance));
         int capacity = (int)(typeof(CharacterInventory).GetField("capacity", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(__instance));
         InvSlotType[] SlotTypes = __instance.SlotTypes;
@@ -321,7 +304,6 @@ namespace BetterHotkeys {
     public BetterHotkeys() {
       this.harmony = new Harmony(BetterHotkeys.PatchCategory);
       this.harmony.PatchAll();
-      LuaCsLogger.Log("Better Hot Keys initialized");
     }
 
     public override void Stop() {
