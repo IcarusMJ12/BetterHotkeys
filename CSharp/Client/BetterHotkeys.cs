@@ -82,9 +82,9 @@ namespace BetterHotkeys {
               (character.SelectedBy.Inventory.AccessibleWhenAlive || character.SelectedBy.Inventory.AccessibleByOwner) &&
               allowInventorySwap) {
             return QuickUseAction.TakeFromCharacter;
-          } else if (character.HeldItems.Any(i =>
+          } else if (character.HeldItems.FirstOrDefault(i =>
                 i.OwnInventory != null &&
-                (i.OwnInventory.CanBePut(item) || ((i.OwnInventory.Capacity == 1 || i.OwnInventory.Container.HasSubContainers) && i.OwnInventory.AllowSwappingContainedItems && i.OwnInventory.Container.CanBeContained(item))))) {
+                (i.OwnInventory.CanBePut(item) || ((i.OwnInventory.Capacity == 1 || i.OwnInventory.Container.HasSubContainers) && i.OwnInventory.AllowSwappingContainedItems && i.OwnInventory.Container.CanBeContained(item)))) is { } equippedContainer) {
             if (allowEquip && !character.HasEquippedItem(item, InvSlotType.RightHand | InvSlotType.LeftHand) &&
                 (item.HasTag("weapon") ||
                  item.HasTag("mountableweapon"))) { // anything that can be put in a weapon holder, includes welders/cutters
@@ -304,6 +304,8 @@ namespace BetterHotkeys {
     public BetterHotkeys() {
       this.harmony = new Harmony(BetterHotkeys.PatchCategory);
       this.harmony.PatchAll();
+      // load-bearing log -- mod does nothing without it :/
+      LuaCsLogger.Log("[BetterHotkeys] Initialized");
     }
 
     public override void Stop() {
