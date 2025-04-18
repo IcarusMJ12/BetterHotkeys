@@ -1,4 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="BetterHotkeys" modversion="0.4.0" corepackage="False" steamworkshopid="2984665813" gameversion="1.1.19.3">
+<contentpackage name="BetterHotkeys" modversion="0.5.0" corepackage="False" steamworkshopid="2984665813" gameversion="1.8.7.0" expectedhash="1921A7CE7916516205881E2C43D2D0B1">
   <Other file="%ModDir%/CSharp/Client/BetterHotkeys.cs" />
 </contentpackage>
