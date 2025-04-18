@@ -309,7 +309,7 @@ namespace BetterHotkeys {
     }
 
     public override void Stop() {
-      this.harmony.UnpatchAll(BetterHotkeys.PatchCategory);
+      this.harmony.UnpatchSelf();
     }
   }
 }
