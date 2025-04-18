@@ -11,9 +11,13 @@ the bag slot, so use this at your own risk.
 Also, please consider that using this mod may be construed as cheating in a
 multiplayer environment.
 
+
 ### Requirements
 
-[Cs For Barotrauma](https://steamcommunity.com/workshop/filedetails/?id=2795927223)
+[Lua For Barotrauma](https://steamcommunity.com/workshop/filedetails/?id=2559634234)
+You need to have `Enable CSharp Scripting` turned on in `LuaCs Settings`.
+In multiplayer where the host doesn't have this mod enabled, you also need to
+have `Treat Forced Mods As Normal` turned off.
 
 
 ### Usage
